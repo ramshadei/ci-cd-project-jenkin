@@ -1,31 +1,95 @@
-cat <<EOL > Jenkinsfile
+
 pipeline {
-    agent any
+    agent { label 'ramshad-docker-jenkins-slave-node' }
+
+    environment {
+        ECR_REPO = '866934333672.dkr.ecr.eu-west-2.amazonaws.com/ramshadimgs'  // Replace with actual ECR URL
+        IMAGE_NAME = 'app-image'
+        TAG = "${env.BRANCH_NAME}-${env.BUILD_ID}"
+        SSH_KEY = credentials('ramshad-key')  // Credential ID for SSH key to access EC2
+    }
+
     stages {
-        stage('Build') {
+        stage('Checkout') {
+            steps {
+                git branch: "${env.BRANCH_NAME}", url: 'https://github.com/ramshadei/ci-cd-project-jenkin.git'
+            }
+        }
+
+        stage('Build Docker Image') {
             steps {
                 script {
-                    echo 'Building the application...'
-                    sh 'docker build -t ci-cd-project-jenkin:latest .'
+                    docker.build("${env.ECR_REPO}:${env.TAG}")
                 }
             }
         }
-        stage('Test') {
+
+        stage('Push to ECR') {
             steps {
-                script {
-                    echo 'Running tests...'
-                    // Add test commands here
+                withCredentials([usernamePassword(credentialsId: 'aws-ecr', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                    sh "aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${env.ECR_REPO}"
+                    sh "docker push ${env.ECR_REPO}:${env.TAG}"
+                }
+            }
+            post {
+                success {
+                    emailext(
+                        subject: "Jenkins Job - Docker Image Pushed to ECR Successfully",
+                        body: "Hello,\n\nThe Docker image '${env.IMAGE_NAME}:${env.TAG}' has been successfully pushed to ECR.\n\nBest regards,\nJenkins",
+                        recipientProviders: [[$class: 'DevelopersRecipientProvider']],
+                        // to: "m.ehtasham.azhar@gmail.com"
+                        to: "ramshadei@gmail.com"
+                    )
                 }
             }
         }
-        stage('Deploy') {
+
+        stage('Static Code Analysis - SonarQube') {
             steps {
                 script {
-                    echo 'Deploying the application...'
-                    // Add deployment commands here
+                    withSonarQubeEnv('SonarQubeServer') {
+                        sh 'mvn sonar:sonar'
+                    }
+                }
+            }
+        }
+
+        stage('Container Security Scan - Trivy') {
+            steps {
+                script {
+                    sh "trivy image ${ECR_REPO}:${TAG}"
+                }
+            }
+        }
+
+        stage('Deploy to Environment') {
+            steps {
+                script {
+                    def targetHost = ''
+                    if (env.BRANCH_NAME == 'dev') {
+                        targetHost = '13.40.123.29'  // Replace with the development EC2 instance IP
+                    } else if (env.BRANCH_NAME == 'staging') {
+                        targetHost = '18.169.167.222'  // Replace with the staging EC2 instance IP
+                    } else if (env.BRANCH_NAME == 'main') {
+                        targetHost = '18.130.152.160'  // Replace with the production EC2 instance IP
+                    }
+
+                    sh """
+                    ssh -i ${SSH_KEY} ec2-user@${targetHost} << EOF
+                    docker pull ${ECR_REPO}:${TAG}
+                    docker stop ${IMAGE_NAME} || true
+                    docker rm ${IMAGE_NAME} || true
+                    docker run -d --name ${IMAGE_NAME} -p 80:80 ${ECR_REPO}:${TAG}
+                    EOF
+                    """
                 }
             }
         }
     }
+
+    post {
+        always {
+            cleanWs()  // Clean up workspace after the build
+        }
+    }
 }
-EOL
