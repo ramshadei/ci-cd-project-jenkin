@@ -1,6 +1,6 @@
 
 pipeline {
-    agent { label 'ramshad-docker-jenkins-slave-node' }
+    agent { label 'agent-node-ubuntu' }
 
     environment {
         ECR_REPO = '866934333672.dkr.ecr.eu-west-2.amazonaws.com/ramshadimgs'  // Replace with actual ECR URL
