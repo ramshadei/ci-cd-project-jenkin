@@ -6,7 +6,7 @@ pipeline {
         ECR_REPO = '866934333672.dkr.ecr.eu-west-2.amazonaws.com/ramshadimgs'  // Replace with actual ECR URL
         IMAGE_NAME = 'app-image'
         TAG = "${env.BRANCH_NAME}-${env.BUILD_ID}"
-        SSH_KEY = credentials('ramshad-key')  // Credential ID for SSH key to access EC2
+        SSH_KEY = credentials('279f3b55-bab9-4f40-be07-05b91e729588')  // Credential ID for SSH key to access EC2
     }
 
     stages {
