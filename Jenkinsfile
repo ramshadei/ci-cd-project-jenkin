@@ -8,7 +8,7 @@ pipeline {
         AWS_REGION = "eu-west-2"
         SSH_KEY = credentials('279f3b55-bab9-4f40-be07-05b91e729588')  // Credential ID for SSH key to access EC2
     }
-
+    
     stages {
         stage('Checkout') {
             steps {
@@ -38,8 +38,7 @@ pipeline {
                         subject: "Jenkins Job - Docker Image Pushed to ECR Successfully",
                         body: "Hello,\n\nThe Docker image '${env.IMAGE_NAME}:${env.TAG}' has been successfully pushed to ECR.\n\nBest regards,\nJenkins",
                         recipientProviders: [[$class: 'DevelopersRecipientProvider']],
-                        // to: "m.ehtasham.azhar@gmail.com"
-                        to: "ramshadei@gmail.com"
+                        to: "m.ehtasham.azhar@gmail.com"
                     )
                 }
             }
