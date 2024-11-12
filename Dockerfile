@@ -1,16 +1,13 @@
-cat <<EOL > Dockerfile
-# Use a base image
-FROM python:3.8-slim
+# Use the official Nginx image as the base
+FROM nginx:latest
 
-# Set the working directory
-WORKDIR /app
+# Remove the default server definition
+RUN rm /etc/nginx/conf.d/default.conf
 
-# Copy application code to the container
-COPY app.py /app/app.py
+# Copy custom server configurations
+COPY nginx.conf /etc/nginx/nginx.conf
 
-# Install dependencies if needed
-# RUN pip install -r requirements.txt
-
-# Command to run your app
-CMD ["python", "app.py"]
-EOL
+# Copy the static content
+COPY app.py /usr/share/nginx/html/app.py
+# Expose ports
+EXPOSE 8090
