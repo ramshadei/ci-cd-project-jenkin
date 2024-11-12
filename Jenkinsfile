@@ -1,4 +1,3 @@
-
 pipeline {
     agent { label 'connect-agent-node' }
 
@@ -6,13 +5,14 @@ pipeline {
         ECR_REPO = '866934333672.dkr.ecr.eu-west-2.amazonaws.com/ramshadimgs'  // Replace with actual ECR URL
         IMAGE_NAME = 'app-image'
         TAG = "${env.BRANCH_NAME}-${env.BUILD_ID}"
-        SSH_KEY = credentials('279f3b55-bab9-4f40-be07-05b91e729588')  // Credential ID for SSH key to access EC2
+        AWS_REGION = "eu-west-2"
+        // SSH_KEY = credentials('279f3b55-bab9-4f40-be07-05b91e729588')  // Credential ID for SSH key to access EC2
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git branch: "${env.BRANCH_NAME}", url: 'https://github.com/ramshadei/ci-cd-project-jenkin.git'
+                git branch: "${env.BRANCH_NAME}", url: 'https://github.com/ramshadei/ci-cd-project-jenkin.git', credentialsId: 'github-token'
             }
         }
 
@@ -26,11 +26,12 @@ pipeline {
 
         stage('Push to ECR') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'aws-ecr', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
-                    sh "aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${env.ECR_REPO}"
+                withAWS(credentials: 'aws-credentials', region: "${AWS_REGION}")
+                {
+                    sh "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${env.ECR_REPO}"
                     sh "docker push ${env.ECR_REPO}:${env.TAG}"
-                }
-            }
+                } //withAWS
+            } //steps
             post {
                 success {
                     emailext(
