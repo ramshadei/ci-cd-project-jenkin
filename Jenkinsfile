@@ -76,15 +76,19 @@ pipeline {
                     }
 
                     // Use withCredentials to inject the SSH key securely
-                    withCredentials([sshUserPrivateKey(credentialsId: SSH_KEY_CRED_ID, keyFileVariable: 'SSH_KEY_FILE', usernameVariable: 'SSH_USER')]) {
-                        sh """
-                        ssh -o StrictHostKeyChecking=no -i $SSH_KEY_FILE $SSH_USER@$targetHost << EOF
-                        docker pull ${ECR_REPO}:${TAG}
-                        docker stop ${IMAGE_NAME} || true
-                        docker rm ${IMAGE_NAME} || true
-                        docker run -d --name ${IMAGE_NAME} -p 80:80 ${ECR_REPO}:${TAG}
-                        EOF
-                        """
+                    withCredentials([usernamePassword(credentialsId: 'aws-ecr', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                    sshagent(['ec2-ssh-key']){
+                    sh """
+                    ssh -tt -o StrictHostKeyChecking=no ubuntu@${targetHost} << EOF
+                    aws ecr get-login-password --region eu-west-2 | docker login --username AWS --password-stdin ${env.ECR_REPO}
+                    docker pull ${ECR_REPO}:${TAG}
+                    docker stop ${IMAGE_NAME} || true
+                    docker rm ${IMAGE_NAME} || true
+                    docker run -d --name ${IMAGE_NAME} -p 8080:8080 -p 8090:8090 ${ECR_REPO}:${TAG}
+                    exit 0
+EOF
+"""
+                    }//with credential
                     }
                 }
             }
