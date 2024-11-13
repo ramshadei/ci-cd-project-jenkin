@@ -6,7 +6,7 @@ pipeline {
         IMAGE_NAME = 'app-image'
         TAG = "${env.BRANCH_NAME}-${env.BUILD_ID}"
         AWS_REGION = "eu-west-2"
-        SSH_KEY = credentials('279f3b55-bab9-4f40-be07-05b91e729588')  // Credential ID for SSH key to access EC2
+        // SSH_KEY = credentials('279f3b55-bab9-4f40-be07-05b91e729588')  // Credential ID for SSH key to access EC2
     }
     
     stages {
@@ -62,6 +62,31 @@ pipeline {
                 }
             }
         }
+        steps {
+            script {
+                def targetHost = ''
+                if (env.BRANCH_NAME == 'dev') {
+                    targetHost = '13.40.123.29'  // Development EC2 instance IP
+                } else if (env.BRANCH_NAME == 'staging') {
+                    targetHost = '18.169.167.222'  // Staging EC2 instance IP
+                } else if (env.BRANCH_NAME == 'main') {
+                    targetHost = '18.130.152.160'  // Production EC2 instance IP
+                }
+
+                // Using withCredentials to securely access the SSH key
+                withCredentials([sshUserPrivateKey(credentialsId: 'MY_SSH_KEY', keyFileVariable: 'SSH_KEY_FILE', usernameVariable: 'SSH_USER')]) {
+                    sh """
+                    ssh -o StrictHostKeyChecking=no -i $SSH_KEY_FILE $SSH_USER@$targetHost << EOF
+                        docker pull ${ECR_REPO}:${TAG}
+                        docker stop ${IMAGE_NAME} || true
+                        docker rm ${IMAGE_NAME} || true
+                        docker run -d --name ${IMAGE_NAME} -p 80:80 ${ECR_REPO}:${TAG}
+                    EOF
+                    """
+                }
+            }
+}
+
 
         stage('Deploy to Environment') {
             steps {
