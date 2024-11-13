@@ -2,13 +2,12 @@ pipeline {
     agent { label 'connect-agent-node' }
 
     environment {
-        ECR_REPO = '866934333672.dkr.ecr.eu-west-2.amazonaws.com/ramshadimgs'  // Replace with actual ECR URL
+        ECR_REPO = '866934333672.dkr.ecr.eu-west-2.amazonaws.com/ramshadimgs'
         IMAGE_NAME = 'app-image'
         TAG = "${env.BRANCH_NAME}-${env.BUILD_ID}"
         AWS_REGION = "eu-west-2"
-        SSH_KEY_CRED_ID = '279f3b55-bab9-4f40-be07-05b91e729588'  // Credential ID for SSH key to access EC2
     }
-    
+
     stages {
         stage('Checkout') {
             steps {
@@ -46,12 +45,6 @@ pipeline {
         stage('Static Code Analysis - SonarQube') {
             steps {
                 echo "Success: The operation completed successfully."
-                // Uncomment and configure the following lines to use SonarQube
-                // script {
-                //     withSonarQubeEnv('SonarQubeServer') {
-                //         sh 'mvn sonar:sonar'
-                //     }
-                // }
             }
         }
 
@@ -68,23 +61,23 @@ pipeline {
                 script {
                     def targetHost = ''
                     if (env.BRANCH_NAME == 'dev') {
-                        targetHost = '13.40.123.29' // Development EC2 instance IP
+                        targetHost = '13.40.123.29'
                     } else if (env.BRANCH_NAME == 'staging') {
-                        targetHost = '18.169.167.222'  // Staging EC2 instance IP
+                        targetHost = '18.169.167.222'
                     } else if (env.BRANCH_NAME == 'main') {
-                        targetHost = '18.130.152.160'  // Production EC2 instance IP
+                        targetHost = '18.130.136.114'
                     }
 
-                    // Use withCredentials to inject the SSH key securely
-                    withCredentials([sshUserPrivateKey(credentialsId: SSH_KEY_CRED_ID, keyFileVariable: 'SSH_KEY_FILE', usernameVariable: 'SSH_USER')]) {
-                        sh """
-                        ssh -o StrictHostKeyChecking=no -i $SSH_KEY_FILE $SSH_USER@$targetHost << EOF
-                            docker pull ${ECR_REPO}:${TAG}
-                            docker stop ${IMAGE_NAME} || true
-                            docker rm ${IMAGE_NAME} || true
-                            docker run -d --name ${IMAGE_NAME} -p 80:80 ${ECR_REPO}:${TAG}
-                        EOF
-                        """
+                    withCredentials([sshUserPrivateKey(credentialsId: 'SSH_KEY_CRED_ID', keyFileVariable: 'SSH_KEY_FILE', usernameVariable: 'SSH_USER')]) {
+                        // Use single quotes to avoid Groovy interpolation and pass variables directly
+                        sh '''
+                            ssh -o StrictHostKeyChecking=no -i "$SSH_KEY_FILE" "$SSH_USER@$targetHost" << EOF
+                                docker pull ${ECR_REPO}:${TAG}
+                                docker stop ${IMAGE_NAME} || true
+                                docker rm ${IMAGE_NAME} || true
+                                docker run -d --name ${IMAGE_NAME} -p 80:80 ${ECR_REPO}:${TAG}
+                            EOF
+                        '''
                     }
                 }
             }
