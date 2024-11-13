@@ -78,7 +78,7 @@ pipeline {
                     // Use withCredentials to inject the SSH key securely
                     withCredentials([sshUserPrivateKey(credentialsId: SSH_KEY_CRED_ID, keyFileVariable: 'SSH_KEY_FILE', usernameVariable: 'SSH_USER')]) {
                         sh """
-                        ssh -o StrictHostKeyChecking=no -i $SSH_KEY_FILE $SSH_USER@$targetHost << EOF
+                        ssh -o StrictHostKeyChecking=no -i \$SSH_KEY_FILE \$SSH_USER@\$targetHost << 'EOF'
                             docker pull ${ECR_REPO}:${TAG}
                             docker stop ${IMAGE_NAME} || true
                             docker rm ${IMAGE_NAME} || true
