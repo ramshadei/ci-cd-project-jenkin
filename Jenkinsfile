@@ -77,7 +77,7 @@ pipeline {
 
                     // Use withCredentials to inject the SSH key securely
                     withCredentials([usernamePassword(credentialsId: 'aws-ecr', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
-                    sshagent(['ec2-ssh-key']){
+                    sshagent(['MY_SSH_KEY']){
                     sh """
                     ssh -tt -o StrictHostKeyChecking=no ubuntu@${targetHost} << EOF
                     aws ecr get-login-password --region eu-west-2 | docker login --username AWS --password-stdin ${env.ECR_REPO}
