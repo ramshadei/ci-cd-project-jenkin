@@ -1,4 +1,3 @@
-cat <<EOL > Dockerfile
 # Use a base image
 FROM python:3.8-slim
 
@@ -13,4 +12,3 @@ COPY app.py /app/app.py
 
 # Command to run your app
 CMD ["python", "app.py"]
-EOL
