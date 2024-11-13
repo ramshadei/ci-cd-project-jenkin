@@ -72,19 +72,23 @@ pipeline {
                     } else if (env.BRANCH_NAME == 'staging') {
                         targetHost = '18.169.167.222'  // Staging EC2 instance IP
                     } else if (env.BRANCH_NAME == 'main') {
-                        targetHost = '18.130.152.160'  // Production EC2 instance IP
+                        targetHost = '18.130.136.114'  // Production EC2 instance IP
                     }
 
                     // Use withCredentials to inject the SSH key securely
-                    withCredentials([sshUserPrivateKey(credentialsId: SSH_KEY_CRED_ID, keyFileVariable: 'SSH_KEY_FILE', usernameVariable: 'SSH_USER')]) {
-                        sh """
-                        ssh -o StrictHostKeyChecking=no -i $SSH_KEY_FILE $SSH_USER@$targetHost << EOF
-                            docker pull ${ECR_REPO}:${TAG}
-                            docker stop ${IMAGE_NAME} || true
-                            docker rm ${IMAGE_NAME} || true
-                            docker run -d --name ${IMAGE_NAME} -p 80:80 ${ECR_REPO}:${TAG}
-                        EOF
-                        """
+                    withCredentials([usernamePassword(credentialsId: 'aws-ecr', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                    sshagent(['MY_SSH_KEY']){
+                    sh """
+                    ssh -tt -o StrictHostKeyChecking=no ubuntu@${targetHost} << EOF
+                    aws ecr get-login-password --region eu-west-2 | docker login --username AWS --password-stdin ${env.ECR_REPO}
+                    docker pull ${ECR_REPO}:${TAG}
+                    docker stop ${IMAGE_NAME} || true
+                    docker rm ${IMAGE_NAME} || true
+                    docker run -d --name ${IMAGE_NAME} -p 8080:8080 -p 8090:8090 ${ECR_REPO}:${TAG}
+                    exit 0
+EOF
+"""
+                    }//with credential
                     }
                 }
             }
