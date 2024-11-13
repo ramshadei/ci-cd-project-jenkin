@@ -68,7 +68,7 @@ pipeline {
                         targetHost = '18.130.136.114'
                     }
 
-                    withCredentials([sshUserPrivateKey(credentialsId: 'SSH_KEY_CRED_ID', keyFileVariable: 'SSH_KEY_FILE', usernameVariable: 'SSH_USER')]) {
+                    withCredentials([sshUserPrivateKey(credentialsId: 'MY_SSH_KEY', keyFileVariable: 'SSH_KEY_FILE', usernameVariable: 'SSH_USER')]) {
                         // Use single quotes to avoid Groovy interpolation and pass variables directly
                         sh '''
                             ssh -o StrictHostKeyChecking=no -i "$SSH_KEY_FILE" "$SSH_USER@$targetHost" << EOF
