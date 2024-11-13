@@ -68,7 +68,7 @@ pipeline {
                 script {
                     def targetHost = ''
                     if (env.BRANCH_NAME == 'dev') {
-                        targetHost = '13.40.123.29'  // Development EC2 instance IP
+                        targetHost = '13.40.123.29' // Development EC2 instance IP
                     } else if (env.BRANCH_NAME == 'staging') {
                         targetHost = '18.169.167.222'  // Staging EC2 instance IP
                     } else if (env.BRANCH_NAME == 'main') {
