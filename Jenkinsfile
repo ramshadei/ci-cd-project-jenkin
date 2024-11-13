@@ -6,7 +6,7 @@ pipeline {
         IMAGE_NAME = 'app-image'
         TAG = "${env.BRANCH_NAME}-${env.BUILD_ID}"
         AWS_REGION = "eu-west-2"
-        // SSH_KEY = credentials('279f3b55-bab9-4f40-be07-05b91e729588')  // Credential ID for SSH key to access EC2
+        SSH_KEY_CRED_ID = '279f3b55-bab9-4f40-be07-05b91e729588'  // Credential ID for SSH key to access EC2
     }
     
     stages {
@@ -26,12 +26,11 @@ pipeline {
 
         stage('Push to ECR') {
             steps {
-                withAWS(credentials: 'aws-credentials', region: "${AWS_REGION}")
-                {
+                withAWS(credentials: 'aws-credentials', region: "${AWS_REGION}") {
                     sh "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${env.ECR_REPO}"
                     sh "docker push ${env.ECR_REPO}:${env.TAG}"
-                } //withAWS
-            } //steps
+                }
+            }
             post {
                 success {
                     emailext(
@@ -46,7 +45,8 @@ pipeline {
 
         stage('Static Code Analysis - SonarQube') {
             steps {
-                echo "Success: The operation completed successfully."    
+                echo "Success: The operation completed successfully."
+                // Uncomment and configure the following lines to use SonarQube
                 // script {
                 //     withSonarQubeEnv('SonarQubeServer') {
                 //         sh 'mvn sonar:sonar'
@@ -62,52 +62,30 @@ pipeline {
                 }
             }
         }
-        steps {
-            script {
-                def targetHost = ''
-                if (env.BRANCH_NAME == 'dev') {
-                    targetHost = '13.40.123.29'  // Development EC2 instance IP
-                } else if (env.BRANCH_NAME == 'staging') {
-                    targetHost = '18.169.167.222'  // Staging EC2 instance IP
-                } else if (env.BRANCH_NAME == 'main') {
-                    targetHost = '18.130.152.160'  // Production EC2 instance IP
-                }
-
-                // Using withCredentials to securely access the SSH key
-                withCredentials([sshUserPrivateKey(credentialsId: 'MY_SSH_KEY', keyFileVariable: 'SSH_KEY_FILE', usernameVariable: 'SSH_USER')]) {
-                    sh """
-                    ssh -o StrictHostKeyChecking=no -i $SSH_KEY_FILE $SSH_USER@$targetHost << EOF
-                        docker pull ${ECR_REPO}:${TAG}
-                        docker stop ${IMAGE_NAME} || true
-                        docker rm ${IMAGE_NAME} || true
-                        docker run -d --name ${IMAGE_NAME} -p 80:80 ${ECR_REPO}:${TAG}
-                    EOF
-                    """
-                }
-            }
-}
-
 
         stage('Deploy to Environment') {
             steps {
                 script {
                     def targetHost = ''
                     if (env.BRANCH_NAME == 'dev') {
-                        targetHost = '13.40.123.29'  // Replace with the development EC2 instance IP
+                        targetHost = '13.40.123.29'  // Development EC2 instance IP
                     } else if (env.BRANCH_NAME == 'staging') {
-                        targetHost = '18.169.167.222'  // Replace with the staging EC2 instance IP
+                        targetHost = '18.169.167.222'  // Staging EC2 instance IP
                     } else if (env.BRANCH_NAME == 'main') {
-                        targetHost = '18.130.152.160'  // Replace with the production EC2 instance IP
+                        targetHost = '18.130.152.160'  // Production EC2 instance IP
                     }
 
-                    sh """
-                    ssh -i ${SSH_KEY} ubuntu@${targetHost} << EOF
-                    docker pull ${ECR_REPO}:${TAG}
-                    docker stop ${IMAGE_NAME} || true
-                    docker rm ${IMAGE_NAME} || true
-                    docker run -d --name ${IMAGE_NAME} -p 80:80 ${ECR_REPO}:${TAG}
-                    EOF
-                    """
+                    // Use withCredentials to inject the SSH key securely
+                    withCredentials([sshUserPrivateKey(credentialsId: SSH_KEY_CRED_ID, keyFileVariable: 'SSH_KEY_FILE', usernameVariable: 'SSH_USER')]) {
+                        sh """
+                        ssh -o StrictHostKeyChecking=no -i $SSH_KEY_FILE $SSH_USER@$targetHost << EOF
+                            docker pull ${ECR_REPO}:${TAG}
+                            docker stop ${IMAGE_NAME} || true
+                            docker rm ${IMAGE_NAME} || true
+                            docker run -d --name ${IMAGE_NAME} -p 80:80 ${ECR_REPO}:${TAG}
+                        EOF
+                        """
+                    }
                 }
             }
         }
