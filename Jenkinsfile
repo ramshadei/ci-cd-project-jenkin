@@ -53,18 +53,10 @@ Jenkins""",
 
         stage('Static Code Analysis - SonarQube') {
             steps {
-                echo "Starting SonarQube analysis..."
-                withSonarQubeEnv('SonarQube Scanner') {  // Ensure this matches your SonarQube installation configuration in Jenkins
-                    sh """
-                    sonar-scanner \
-                      -Dsonar.projectKey=${env.SONARQUBE_PROJECT_KEY} \
-                      -Dsonar.sources=./src \
-                      -Dsonar.host.url=${env.SONARQUBE_URL} \
-                      -Dsonar.login=${env.SONARQUBE_TOKEN}
-                    """
+                withSonarQubeEnv('SonarQube Scanner') {
+                    sh 'mvn sonar:sonar'
                 }
             }
-        }
 
         stage('Container Security Scan - Trivy') {
             steps {
