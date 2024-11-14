@@ -8,7 +8,7 @@ pipeline {
         AWS_REGION = "eu-west-2"
         SSH_KEY_CRED_ID = '279f3b55-bab9-4f40-be07-05b91e729588'  // Credential ID for SSH key to access EC2
     }
-    
+
     stages {
         stage('Checkout') {
             steps {
@@ -45,20 +45,43 @@ pipeline {
 
         stage('Static Code Analysis - SonarQube') {
             steps {
-                echo "Success: The operation completed successfully."
-                // Uncomment and configure the following lines to use SonarQube
-                // script {
-                //     withSonarQubeEnv('SonarQubeServer') {
-                //         sh 'mvn sonar:sonar'
-                //     }
-                // }
+                echo "Starting SonarQube analysis..."
+                withSonarQubeEnv('SonarQube') {  // Ensure this name matches your SonarQube configuration in Jenkins
+                    sh '''
+                    sonar-scanner \
+                      -Dsonar.projectKey=ramshadei_ci-cd-project-jenkin_208bbfa5-a864-4ed8-8d43-23d9b95c36a9 \  // Replace with your actual Project Key
+                      -Dsonar.sources=./src \
+                      -Dsonar.host.url=http://<SonarQube-IP>:9000 \
+                      -Dsonar.login=sqp_354adbdc46287c3accb8d91c5b2453bcfd651fb5
+                    '''
+                }
             }
         }
 
         stage('Container Security Scan - Trivy') {
             steps {
                 script {
-                    sh "trivy image ${ECR_REPO}:${TAG}"
+                    // Run Trivy scan and capture output
+                    def trivyOutput = sh(script: "trivy image ${ECR_REPO}:${TAG}", returnStdout: true).trim()
+                    
+                    // Store the Trivy output in a file to be sent by email
+                    writeFile(file: 'trivy_report.txt', text: trivyOutput)
+                    
+                    // Send the Trivy output via email
+                    emailext(
+                        subject: "Jenkins Job - Trivy Security Scan Report",
+                        body: """Hello,
+
+The security scan report from Trivy is as follows:
+
+${trivyOutput}
+
+Best regards,
+Jenkins""",
+                        recipientProviders: [[$class: 'DevelopersRecipientProvider']],
+                        to: "m.ehtasham.azhar@gmail.com",
+                        attachmentsPattern: 'trivy_report.txt'  // Attach the Trivy output file
+                    )
                 }
             }
         }
@@ -77,18 +100,18 @@ pipeline {
 
                     // Use withCredentials to inject the SSH key securely
                     withCredentials([usernamePassword(credentialsId: 'aws-ecr', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
-                    sshagent(['MY_SSH_KEY']){
-                    sh """
-                    ssh -tt -o StrictHostKeyChecking=no ubuntu@${targetHost} << EOF
-                    aws ecr get-login-password --region eu-west-2 | docker login --username AWS --password-stdin ${env.ECR_REPO}
-                    docker pull ${ECR_REPO}:${TAG}
-                    docker stop ${IMAGE_NAME} || true
-                    docker rm ${IMAGE_NAME} || true
-                    docker run -d --name ${IMAGE_NAME} -p 8080:8080 -p 8090:8090 ${ECR_REPO}:${TAG}
-                    exit 0
-EOF
-"""
-                    }//with credential
+                        sshagent([SSH_KEY_CRED_ID]) {  // Ensure that the correct SSH key credentials ID is provided
+                            sh """
+                            ssh -tt -o StrictHostKeyChecking=no ubuntu@${targetHost} << EOF
+                            aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${env.ECR_REPO}
+                            docker pull ${ECR_REPO}:${TAG}
+                            docker stop ${IMAGE_NAME} || true
+                            docker rm ${IMAGE_NAME} || true
+                            docker run -d --name ${IMAGE_NAME} -p 80:80 ${ECR_REPO}:${TAG}
+                            exit 0
+                            EOF
+                            """
+                        }
                     }
                 }
             }
