@@ -7,6 +7,9 @@ pipeline {
         TAG = "${env.BRANCH_NAME}-${env.BUILD_ID}"
         AWS_REGION = "eu-west-2"
         SSH_KEY_CRED_ID = '279f3b55-bab9-4f40-be07-05b91e729588'  // Credential ID for SSH key to access EC2
+        SONARQUBE_PROJECT_KEY = 'ramshadei_ci-cd-project-jenkin_208bbfa5-a864-4ed8-8d43-23d9b95c36a9'  // Replace with actual Project Key
+        SONARQUBE_URL = 'http://3.10.142.101:9000'  // SonarQube URL (Update with the correct one)
+        SONARQUBE_TOKEN = 'sqp_354adbdc46287c3accb8d91c5b2453bcfd651fb5'  // SonarQube authentication token (Use Jenkins credentials for security)
     }
 
     stages {
@@ -35,7 +38,12 @@ pipeline {
                 success {
                     emailext(
                         subject: "Jenkins Job - Docker Image Pushed to ECR Successfully",
-                        body: "Hello,\n\nThe Docker image '${env.IMAGE_NAME}:${env.TAG}' has been successfully pushed to ECR.\n\nBest regards,\nJenkins",
+                        body: """Hello,
+
+The Docker image '${env.IMAGE_NAME}:${env.TAG}' has been successfully pushed to ECR.
+
+Best regards,
+Jenkins""",
                         recipientProviders: [[$class: 'DevelopersRecipientProvider']],
                         to: "m.ehtasham.azhar@gmail.com"
                     )
@@ -46,14 +54,14 @@ pipeline {
         stage('Static Code Analysis - SonarQube') {
             steps {
                 echo "Starting SonarQube analysis..."
-                withSonarQubeEnv('SonarQube Scanner') {  // Ensure this name matches your SonarQube configuration in Jenkins
-                    sh '''
+                withSonarQubeEnv('SonarQube Scanner') {  // Ensure this matches your SonarQube installation configuration in Jenkins
+                    sh """
                     sonar-scanner \
-                      -Dsonar.projectKey=ramshadei_ci-cd-project-jenkin_208bbfa5-a864-4ed8-8d43-23d9b95c36a9  // Replace with your actual Project Key
+                      -Dsonar.projectKey=${env.SONARQUBE_PROJECT_KEY} \
                       -Dsonar.sources=./src \
-                      -Dsonar.host.url=http://3.10.142.101:9000 \
-                      -Dsonar.login=sqp_354adbdc46287c3accb8d91c5b2453bcfd651fb5
-                    '''
+                      -Dsonar.host.url=${env.SONARQUBE_URL} \
+                      -Dsonar.login=${env.SONARQUBE_TOKEN}
+                    """
                 }
             }
         }
@@ -63,10 +71,10 @@ pipeline {
                 script {
                     // Run Trivy scan and capture output
                     def trivyOutput = sh(script: "trivy image ${ECR_REPO}:${TAG}", returnStdout: true).trim()
-                    
+
                     // Store the Trivy output in a file to be sent by email
                     writeFile(file: 'trivy_report.txt', text: trivyOutput)
-                    
+
                     // Send the Trivy output via email
                     emailext(
                         subject: "Jenkins Job - Trivy Security Scan Report",
