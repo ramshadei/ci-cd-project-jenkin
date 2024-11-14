@@ -72,7 +72,7 @@ pipeline {
                     } else if (env.BRANCH_NAME == 'staging') {
                         targetHost = '18.169.167.222'  // Staging EC2 instance IP
                     } else if (env.BRANCH_NAME == 'main') {
-                        targetHost = '18.130.152.160'  // Production EC2 instance IP
+                        targetHost = '18.130.136.114'  // Production EC2 instance IP
                     }
 
                     // Use withCredentials to inject the SSH key securely
@@ -84,7 +84,7 @@ pipeline {
                     docker pull ${ECR_REPO}:${TAG}
                     docker stop ${IMAGE_NAME} || true
                     docker rm ${IMAGE_NAME} || true
-                    docker run -d --name ${IMAGE_NAME} -p 8080:8080 -p 8090:8090 ${ECR_REPO}:${TAG}
+                    docker run -d --name ${IMAGE_NAME} -p 80:80 ${ECR_REPO}:${TAG}
                     exit 0
 EOF
 """
