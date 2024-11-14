@@ -57,6 +57,7 @@ Jenkins""",
                     sh 'mvn sonar:sonar'
                 }
             }
+        }
 
         stage('Container Security Scan - Trivy') {
             steps {
