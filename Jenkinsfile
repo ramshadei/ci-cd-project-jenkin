@@ -49,7 +49,7 @@ pipeline {
                 withSonarQubeEnv('SonarQube') {  // Ensure this name matches your SonarQube configuration in Jenkins
                     sh '''
                     sonar-scanner \
-                      -Dsonar.projectKey=ramshadei_ci-cd-project-jenkin_208bbfa5-a864-4ed8-8d43-23d9b95c36a9 \  // Replace with your actual Project Key
+                      -Dsonar.projectKey=ramshadei_ci-cd-project-jenkin_208bbfa5-a864-4ed8-8d43-23d9b95c36a9  // Replace with your actual Project Key
                       -Dsonar.sources=./src \
                       -Dsonar.host.url=http://<SonarQube-IP>:9000 \
                       -Dsonar.login=sqp_354adbdc46287c3accb8d91c5b2453bcfd651fb5
