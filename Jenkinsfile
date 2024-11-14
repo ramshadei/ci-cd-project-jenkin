@@ -62,7 +62,7 @@ Jenkins""",
         stage('Container Security Scan - Trivy') {
             steps {
                 script {
-                    // Run Trivy scan and capture output
+                    // Run Trivy scan and 
                     def trivyOutput = sh(script: "trivy image ${ECR_REPO}:${TAG}", returnStdout: true).trim()
 
                     // Store the Trivy output in a file to be sent by email
