@@ -95,7 +95,7 @@ Jenkins""",
                     } else if (env.BRANCH_NAME == 'staging') {
                         targetHost = '18.169.167.222'  // Staging EC2 instance IP
                     } else if (env.BRANCH_NAME == 'main') {
-                        targetHost = '18.130.136.114'  // Production EC2 instance IP
+                        targetHost = '18.130.136.114'    // Production EC2 instance IP
                     }
 
                     // Use withCredentials to inject the SSH key securely
